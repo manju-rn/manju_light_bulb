@@ -129,7 +129,8 @@
 #endif
 
 // Manju - Declare the On_off_set_value function
-static void on_off_set_value(zb_bool_t on);
+// static void on_off_set_value(zb_bool_t on);
+// static void on_off_set_value(zb_bool_t on, zb_uint8_t endpoint_invoked);
 
 LOG_MODULE_REGISTER(app);
 
@@ -326,11 +327,11 @@ static void button_changed(uint32_t button_state, uint32_t has_changed)
 
 		if(dev_ctx.on_off_attr.on_off)
 		{
-			on_off_set_value(ZB_FALSE);
+			// on_off_set_value(ZB_FALSE);
 		}
 		else
 		{
-			on_off_set_value(ZB_TRUE);
+			// on_off_set_value(ZB_TRUE);
 		}
 
 		LOG_INF("Toggling Completed");
@@ -377,21 +378,67 @@ static void configure_gpio(void)
  * @param[in] brightness_level Brightness level, allowed values 0 ... 255,
  *                             0 - turn off, 255 - full brightness.
  */
-static void light_bulb_set_brightness(zb_uint8_t brightness_level)
+// static void light_bulb_set_brightness(zb_uint8_t brightness_level)
+// {
+// 	uint32_t pulse = brightness_level * LED_PWM_PERIOD_US / 255U;
+
+// 	if (pwm_pin_set_usec(led_pwm_dev, PWM_DK_LED4_CHANNEL,
+// 			     LED_PWM_PERIOD_US, pulse, PWM_DK_LED4_FLAGS)) {
+// 		LOG_ERR("Pwm led 4 set fails:\n");
+// 		return;
+// 	}
+
+// 	// Manju - Set the control for switching on and brightness for GPIO 0.02
+// 	if (pwm_pin_set_usec(led_pwm_dev_gpio, PWM_GPIO_LED_P0_02_CHANNEL, LED_PWM_PERIOD_US, pulse, PWM_GPIO_LED_P0_02_FLAGS)) 
+// 	{
+// 		LOG_ERR("GPIO P 0.02 set fails:\n");
+// 		return;
+// 	}
+// }
+
+/**Manju - Override function to handle the ENDPOINT INVOKED
+ * @brief Sets brightness of bulb luminous executive element
+ *
+ * @param[in] brightness_level Brightness level, allowed values 0 ... 255,
+ *                             0 - turn off, 255 - full brightness.
+ */
+static void light_bulb_set_brightness(zb_uint8_t brightness_level, zb_uint8_t ENDPOINT_INVOKED)
 {
 	uint32_t pulse = brightness_level * LED_PWM_PERIOD_US / 255U;
 
-	if (pwm_pin_set_usec(led_pwm_dev, PWM_DK_LED4_CHANNEL,
-			     LED_PWM_PERIOD_US, pulse, PWM_DK_LED4_FLAGS)) {
-		LOG_ERR("Pwm led 4 set fails:\n");
-		return;
-	}
+    // Manju - Commenting out the original to do a check for the Endpoint that is invoked
+	// if (pwm_pin_set_usec(led_pwm_dev, PWM_DK_LED4_CHANNEL,
+	// 		     LED_PWM_PERIOD_US, pulse, PWM_DK_LED4_FLAGS)) {
+	// 	LOG_ERR("Pwm led 4 set fails:\n");
+	// 	return;
+	// }
 
-	// Manju - Set the control for switching on and brightness for GPIO 0.02
-	if (pwm_pin_set_usec(led_pwm_dev_gpio, PWM_GPIO_LED_P0_02_CHANNEL, LED_PWM_PERIOD_US, pulse, PWM_GPIO_LED_P0_02_FLAGS)) 
+	// // Manju - Set the control for switching on and brightness for GPIO 0.02
+	// if (pwm_pin_set_usec(led_pwm_dev_gpio, PWM_GPIO_LED_P0_02_CHANNEL, LED_PWM_PERIOD_US, pulse, PWM_GPIO_LED_P0_02_FLAGS)) 
+	// {
+	// 	LOG_ERR("GPIO P 0.02 set fails:\n");
+	// 	return;
+	// }
+
+	if (ENDPOINT_INVOKED == HA_DIMMABLE_LIGHT_ENDPOINT) 
 	{
-		LOG_ERR("GPIO P 0.02 set fails:\n");
-		return;
+		if (pwm_pin_set_usec(led_pwm_dev, PWM_DK_LED4_CHANNEL, LED_PWM_PERIOD_US, pulse, PWM_DK_LED4_FLAGS))
+		{
+			LOG_ERR("Pwm led 4 set fails:\n");
+			return;
+		}
+	}
+	else if (ENDPOINT_INVOKED == HA_DIMMABLE_LIGHT_ENDPOINT_GPIO) 
+	{
+		if(pwm_pin_set_usec(led_pwm_dev_gpio, PWM_GPIO_LED_P0_02_CHANNEL, LED_PWM_PERIOD_US, pulse, PWM_GPIO_LED_P0_02_FLAGS))
+		{
+			LOG_ERR("GPIO P 0.02 set fails:\n");
+			return;
+		}
+	}
+	else
+	{
+		LOG_INF("None of the endpoint was called");
 	}
 }
 
@@ -399,12 +446,57 @@ static void light_bulb_set_brightness(zb_uint8_t brightness_level)
  *
  * @param[in] new_level   Light bulb brightness value.
  */
-static void level_control_set_value(zb_uint16_t new_level)
+// static void level_control_set_value(zb_uint16_t new_level)
+// {
+// 	LOG_INF("Set level value: %i", new_level);
+
+// 	ZB_ZCL_SET_ATTRIBUTE(
+// 		HA_DIMMABLE_LIGHT_ENDPOINT,
+// 		ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+// 		ZB_ZCL_CLUSTER_SERVER_ROLE,
+// 		ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
+// 		(zb_uint8_t *)&new_level,
+// 		ZB_FALSE);
+
+// 	/* According to the table 7.3 of Home Automation Profile Specification
+// 	 * v 1.2 rev 29, chapter 7.1.3.
+// 	 */
+// 	if (new_level == 0) {
+// 		zb_uint8_t value = ZB_FALSE;
+
+// 		ZB_ZCL_SET_ATTRIBUTE(
+// 			HA_DIMMABLE_LIGHT_ENDPOINT,
+// 			ZB_ZCL_CLUSTER_ID_ON_OFF,
+// 			ZB_ZCL_CLUSTER_SERVER_ROLE,
+// 			ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
+// 			&value,
+// 			ZB_FALSE);
+// 	} else {
+// 		zb_uint8_t value = ZB_TRUE;
+
+// 		ZB_ZCL_SET_ATTRIBUTE(
+// 			HA_DIMMABLE_LIGHT_ENDPOINT,
+// 			ZB_ZCL_CLUSTER_ID_ON_OFF,
+// 			ZB_ZCL_CLUSTER_SERVER_ROLE,
+// 			ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
+// 			&value,
+// 			ZB_FALSE);
+// 	}
+
+// 	light_bulb_set_brightness(new_level);
+// }
+
+/**Manju - Override method to handle the Endpoint
+ * @brief Function for setting the light bulb brightness.
+ *
+ * @param[in] new_level   Light bulb brightness value.
+ */
+static void level_control_set_value(zb_uint16_t new_level, zb_uint8_t ENDPOINT_INVOKED)
 {
 	LOG_INF("Set level value: %i", new_level);
 
 	ZB_ZCL_SET_ATTRIBUTE(
-		HA_DIMMABLE_LIGHT_ENDPOINT,
+		ENDPOINT_INVOKED,
 		ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
 		ZB_ZCL_CLUSTER_SERVER_ROLE,
 		ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
@@ -418,7 +510,7 @@ static void level_control_set_value(zb_uint16_t new_level)
 		zb_uint8_t value = ZB_FALSE;
 
 		ZB_ZCL_SET_ATTRIBUTE(
-			HA_DIMMABLE_LIGHT_ENDPOINT,
+			ENDPOINT_INVOKED,
 			ZB_ZCL_CLUSTER_ID_ON_OFF,
 			ZB_ZCL_CLUSTER_SERVER_ROLE,
 			ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
@@ -428,7 +520,7 @@ static void level_control_set_value(zb_uint16_t new_level)
 		zb_uint8_t value = ZB_TRUE;
 
 		ZB_ZCL_SET_ATTRIBUTE(
-			HA_DIMMABLE_LIGHT_ENDPOINT,
+			ENDPOINT_INVOKED,
 			ZB_ZCL_CLUSTER_ID_ON_OFF,
 			ZB_ZCL_CLUSTER_SERVER_ROLE,
 			ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
@@ -436,19 +528,44 @@ static void level_control_set_value(zb_uint16_t new_level)
 			ZB_FALSE);
 	}
 
-	light_bulb_set_brightness(new_level);
+	light_bulb_set_brightness(new_level, ENDPOINT_INVOKED);
 }
 
 /**@brief Function for turning ON/OFF the light bulb.
  *
  * @param[in]   on   Boolean light bulb state.
  */
-static void on_off_set_value(zb_bool_t on)
+// static void on_off_set_value(zb_bool_t on)
+// {
+// 	LOG_INF("Set ON/OFF value: %i", on);
+
+// 	ZB_ZCL_SET_ATTRIBUTE(
+// 		HA_DIMMABLE_LIGHT_ENDPOINT,
+// 		ZB_ZCL_CLUSTER_ID_ON_OFF,
+// 		ZB_ZCL_CLUSTER_SERVER_ROLE,
+// 		ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
+// 		(zb_uint8_t *)&on,
+// 		ZB_FALSE);
+
+// 	if (on) {
+// 		level_control_set_value(
+// 			dev_ctx.level_control_attr.current_level);
+// 	} else {
+// 		light_bulb_set_brightness(0U);
+// 	}
+// }
+
+/**Manju Override function to handl the ENDPOINT INVOKED value
+ * @brief Function for turning ON/OFF the light bulb.
+ *
+ * @param[in]   on   Boolean light bulb state.
+ */
+static void on_off_set_value(zb_bool_t on, zb_uint8_t ENDPOINT_INVOKED)
 {
 	LOG_INF("Set ON/OFF value: %i", on);
 
 	ZB_ZCL_SET_ATTRIBUTE(
-		HA_DIMMABLE_LIGHT_ENDPOINT,
+		ENDPOINT_INVOKED,
 		ZB_ZCL_CLUSTER_ID_ON_OFF,
 		ZB_ZCL_CLUSTER_SERVER_ROLE,
 		ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
@@ -457,9 +574,9 @@ static void on_off_set_value(zb_bool_t on)
 
 	if (on) {
 		level_control_set_value(
-			dev_ctx.level_control_attr.current_level);
+			dev_ctx.level_control_attr.current_level, ENDPOINT_INVOKED);
 	} else {
-		light_bulb_set_brightness(0U);
+		light_bulb_set_brightness(0U, ENDPOINT_INVOKED);
 	}
 }
 
@@ -561,9 +678,13 @@ static void zcl_device_cb(zb_bufid_t bufid)
 		LOG_INF("Level control setting to %d",
 			device_cb_param->cb_param.level_control_set_value_param
 				.new_value);
+		// level_control_set_value(
+		// 	device_cb_param->cb_param.level_control_set_value_param
+		// 		.new_value);
+		// Manju - call the level_control_set_value with the endpoint invoked information
 		level_control_set_value(
 			device_cb_param->cb_param.level_control_set_value_param
-				.new_value);
+				.new_value, endpoint_invoked);
 		break;
 
 	case ZB_ZCL_SET_ATTR_VALUE_CB_ID:
@@ -580,7 +701,9 @@ static void zcl_device_cb(zb_bufid_t bufid)
 
 			LOG_INF("on/off attribute setting to %hd", value);
 			if (attr_id == ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID) {
-				on_off_set_value((zb_bool_t)value);
+				// on_off_set_value((zb_bool_t)value);
+				// Manju - call the on_off_set_value with the endpoint invoked information
+				on_off_set_value((zb_bool_t)value, endpoint_invoked);
 			}
 		} else if (cluster_id == ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL) {
 			uint16_t value = device_cb_param->cb_param.
@@ -590,7 +713,9 @@ static void zcl_device_cb(zb_bufid_t bufid)
 				value);
 			if (attr_id ==
 			    ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID) {
-				level_control_set_value(value);
+				// level_control_set_value(value);
+				// Manju - call the level_control_set_value with endpoint invoked information
+				level_control_set_value(value, endpoint_invoked);
 			}
 		} else {
 			/* Other clusters can be processed here */
@@ -659,7 +784,10 @@ void main(void)
 	ZB_AF_REGISTER_DEVICE_CTX(&dimmable_light_ctx);
 
 	bulb_clusters_attr_init();
-	level_control_set_value(dev_ctx.level_control_attr.current_level);
+	// level_control_set_value(dev_ctx.level_control_attr.current_level); // Manju - commenting to use the new function
+	level_control_set_value(dev_ctx.level_control_attr.current_level, HA_DIMMABLE_LIGHT_ENDPOINT);
+	level_control_set_value(dev_ctx.level_control_attr.current_level, HA_DIMMABLE_LIGHT_ENDPOINT_GPIO);
+	
 
 	LOG_INF("Bulb Cluster initiated and initial level set %d",dev_ctx.level_control_attr.current_level );
 
